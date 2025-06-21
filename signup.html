@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>إنشاء حساب - سيفين دي إكسبرس</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Cairo', sans-serif;
+      background-color: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .signup-box {
+      background-color: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+      width: 90%;
+      max-width: 400px;
+    }
+
+    .signup-box h2 {
+      margin-bottom: 20px;
+      text-align: center;
+      color: #d9152d;
+    }
+
+    .signup-box input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+
+    .signup-box button {
+      background-color: #d9152d;
+      color: white;
+      border: none;
+      padding: 12px;
+      width: 100%;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #message {
+      text-align: center;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    .error {
+      color: red;
+    }
+
+    .success {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="signup-box">
+    <h2>إنشاء حساب جديد</h2>
+    <input type="text" id="name" placeholder="الاسم الكامل" required />
+    <input type="text" id="phone" placeholder="رقم الهاتف" required />
+    <input type="text" id="loc" placeholder="الدولة" required />
+    <input type="text" id="loc2" placeholder="المنطقة" required />
+    <input type="email" id="email" placeholder="البريد الإلكتروني" required />
+    <input type="password" id="password" placeholder="كلمة المرور" required />
+    <button onclick="signup()">إنشاء الحساب</button>
+    <div id="message"></div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC9DcXA5C8HdPROlOj9BTQ4GhR5wdtZCdc",
+      authDomain: "seven-deship.firebaseapp.com",
+      databaseURL: "https://seven-deship-default-rtdb.firebaseio.com",
+      projectId: "seven-deship",
+      storageBucket: "seven-deship.appspot.com",
+      messagingSenderId: "163173561785",
+      appId: "1:163173561785:web:b6bcaaede97744a546f268",
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const database = firebase.database();
+
+    function signup() {
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const phone = document.getElementById("phone").value.trim();
+      const loc = document.getElementById("loc").value.trim();
+      const loc2 = document.getElementById("loc2").value.trim();
+      const msg = document.getElementById("message");
+
+      auth.createUserWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+          const user = userCredential.user;
+          const userId = user.uid;
+
+          // حفظ البيانات في قاعدة البيانات
+          database.ref("users/" + userId).set({
+            name: name,
+            email: email,
+            phone: phone,
+            country: loc,
+            region: loc2,
+            orders: 0,
+            joinedAt: new Date().toISOString()
+          });
+
+          msg.innerHTML = "<p class='success'>تم إنشاء الحساب بنجاح!</p>";
+
+          setTimeout(() => {
+            window.location.href = "mezo.html";
+          }, 1500);
+        })
+        .catch((error) => {
+          msg.innerHTML = "<p class='error'>" + error.message + "</p>";
+        });
+    }
+  </script>
+
+</body>
+</html>

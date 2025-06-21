@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>سيفين دي إكسبرس | تتبع شحنتك</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Cairo', sans-serif; transition: all 0.2s ease; }
+    body { background-color: #f4f4f4; color: #333; }
+    header { background-color: white; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); position: sticky; top: 0; z-index: 10; }
+    .logo { font-size: 28px; font-weight: bold; color: #d9152d; }
+    .auth-buttons button { margin-left: 10px; padding: 8px 16px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    .login-btn { background-color: transparent; border: 2px solid #d9152d; color: #d9152d; }
+    .signup-btn { background-color: #d9152d; color: white; }
+    .sidebar { width: 240px; background-color: #d9152d; height: 100vh; padding-top: 30px; position: fixed; right: 0; top: 0; color: white; display: flex; flex-direction: column; }
+    .sidebar h2 { text-align: center; font-size: 22px; margin-bottom: 30px; }
+    .sidebar a { color: white; text-decoration: none; padding: 15px 30px; font-size: 16px; display: flex; align-items: center; gap: 10px; transition: background 0.3s, transform 0.1s; cursor: pointer; }
+    .sidebar a:hover { background-color: #b31326; transform: scale(1.03); }
+    .sidebar a:active { transform: scale(0.97); }
+    .main { margin-right: 240px; padding: 20px; }
+    .hero { background-color: #d9152d; color: white; padding: 60px 20px; text-align: center; }
+    .hero h1 { font-size: 36px; margin-bottom: 10px; }
+    .track-box { background-color: white; margin: -50px auto 30px; padding: 30px; width: 90%; max-width: 600px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+    .track-box input { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 15px; }
+    .track-box button { background-color: #d9152d; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; transition: background 0.3s; }
+    .track-box button.loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      cursor: not-allowed;
+      background-color: #a00;
+    }
+    .loading-spinner {
+      width: 18px;
+      height: 18px;
+      border: 3px solid white;
+      border-top: 3px solid transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .error-dialog {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f44336;
+      color: white;
+      padding: 15px 25px;
+      border-radius: 8px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+      z-index: 9999;
+      animation: shakeFade 0.6s ease forwards;
+    }
+    @keyframes shakeFade {
+      0% { transform: translateX(-50%) translateY(-10px); opacity: 0; }
+      25% { transform: translateX(-48%) translateY(5px); }
+      50% { transform: translateX(-52%) translateY(-5px); }
+      75% { transform: translateX(-50%) translateY(2px); }
+      100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+    }
+    .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; padding: 20px 0; }
+    .gallery img { width: 100%; border-radius: 10px; height: 180px; object-fit: cover; }
+    footer { text-align: center; padding: 30px 10px; color: #666; }
+    .menu-toggle { display: none; }
+    @media (max-width: 768px) {
+      .sidebar { position: fixed; width: 0; overflow: hidden; transition: 0.3s; }
+      .sidebar.open { width: 240px; }
+      .menu-toggle { display: block; font-size: 24px; background: none; border: none; color: #d9152d; margin-right: 10px; cursor: pointer; }
+      .main { margin-right: 0; }
+    }
+    .dialog-box {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 30px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      z-index: 10000;
+      display: none;
+      text-align: center;
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+    .dialog-box.show {
+      display: block;
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .dialog-box h3 { color: #d9152d; margin-bottom: 20px; }
+    .dialog-box p { margin: 10px 0; font-size: 16px; }
+    .dialog-box button {
+      margin: 10px 5px;
+      padding: 10px 20px;
+      background-color: #d9152d;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .dialog-box .btn-secondary {
+      background-color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar" id="sidebar">
+    <h2>القائمة</h2>
+    <a onclick="animateClick(this)" href="#"><i class="fa fa-home"></i> الرئيسية</a>
+    <a onclick="animateClick(this)" href="history.html"><i class="fa fa-box"></i> شحناتي</a>
+    <a onclick="animateClick(this)" href="add.html"><i class="fa fa-plus-circle"></i> شحنة جديدة</a>
+    <a onclick="animateClick(this); toggleAccountDialog()" href="javascript:void(0);" id="accountBtn" style="display:none;"><i class="fa fa-user"></i> حسابي</a>
+    <a onclick="animateClick(this)" href="#"><i class="fa fa-phone"></i> تواصل معنا</a>
+  </div>
+
+  <div class="main">
+    <header>
+      <div class="logo">سيفين دي إكسبرس</div>
+      <div>
+        <button class="menu-toggle" onclick="toggleSidebar()"><i class="fa fa-bars"></i></button>
+        <div class="auth-buttons" id="authBtns">
+          <button class="login-btn" onclick="location.href='login.html'">تسجيل الدخول</button>
+          <button class="signup-btn" onclick="location.href='signup.html'">إنشاء حساب</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="hero">
+      <h1>تتبع شحنتك الآن بسهولة</h1>
+      <p>نوصل شحنتك بسرعة وأمان</p>
+    </div>
+
+    <div class="track-box">
+      <form onsubmit="handleTrack(event)">
+        <input id="trackCode" type="text" placeholder="أدخل رقم التتبع هنا" required />
+        <button id="trackBtn" type="submit">تتبع الآن</button>
+      </form>
+    </div>
+
+    <div class="gallery">
+      <img src="m1.jpg" alt="شحنة 1" />
+      <img src="m2.jpg" alt="شحنة 2" />
+      <img src="m3.jpg" alt="شحنة 3" />
+      <img src="m4.jpg" alt="شحنة 4" />
+    </div>
+
+    <footer>
+      &copy; 2025 جميع الحقوق محفوظة لـ سيفين دي إكسبرس
+    </footer>
+  </div>
+
+  <div class="dialog-box" id="shipmentDialog">
+    <h3>بيانات الشحنة</h3>
+    <p><strong>رقم التتبع:</strong> <span id="shipmentTRN">...</span></p>
+    <p><strong>الحالة:</strong> <span id="shipmentStory">...</span></p>
+    <p><strong>تاريخ الشحن:</strong> <span id="shipmentDate">...</span></p>
+    <p><strong>الوجهة:</strong> <span id="shipmentLoc">...</span></p>
+    <button class="btn-secondary" onclick="document.getElementById('shipmentDialog').classList.remove('show')">إغلاق</button>
+  </div>
+
+  <div class="dialog-box" id="accountDialog">
+    <h3>بيانات الحساب</h3>
+    <p><strong>الاسم:</strong> <span id="accName">...</span></p>
+    <p><strong>البريد:</strong> <span id="accEmail">...</span></p>
+    <p><strong>رقم الهاتف:</strong> <span id="accPhone">...</span></p>
+    <p><strong>الدولة:</strong> <span id="accCountry">...</span></p>
+    <p><strong>المنطقة:</strong> <span id="accRegion">...</span></p>
+    <p><strong>عدد الطلبات:</strong> <span id="accOrders">...</span></p>
+    <p><strong>تاريخ الانضمام:</strong> <span id="accJoined">...</span></p>
+    <button class="btn-secondary" onclick="firebase.auth().signOut().then(() => location.reload())">تسجيل الخروج</button>
+    <button onclick="document.getElementById('accountDialog').classList.remove('show')">إغلاق</button>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC9DcXA5C8HdPROlOj9BTQ4GhR5wdtZCdc",
+      authDomain: "seven-deship.firebaseapp.com",
+      databaseURL: "https://seven-deship-default-rtdb.firebaseio.com/",
+      projectId: "seven-deship",
+      storageBucket: "seven-deship.appspot.com",
+      messagingSenderId: "163173561785",
+      appId: "1:163173561785:web:b6bcaaede97744a546f268"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById("authBtns").style.display = "none";
+        document.getElementById("accountBtn").style.display = "flex";
+
+        const uid = user.uid;
+        db.ref("users/" + uid).once("value").then(snapshot => {
+          const data = snapshot.val() || {};
+          document.getElementById("accName").textContent = data.name || "غير متوفر";
+          document.getElementById("accEmail").textContent = data.email || user.email;
+          document.getElementById("accPhone").textContent = data.phone || "غير متوفر";
+          document.getElementById("accCountry").textContent = data.country || "غير متوفر";
+          document.getElementById("accRegion").textContent = data.region || "غير متوفر";
+          document.getElementById("accOrders").textContent = data.orders || "0";
+          document.getElementById("accJoined").textContent = data.joinedAt || "غير متوفر";
+        });
+      }
+    });
+
+    function toggleSidebar() {
+      document.getElementById("sidebar").classList.toggle("open");
+    }
+
+    function showError(message) {
+      const errBox = document.createElement("div");
+      errBox.className = "error-dialog";
+      errBox.textContent = message;
+      document.body.appendChild(errBox);
+      setTimeout(() => errBox.remove(), 3000);
+    }
+
+    function animateClick(el) {
+      el.style.transform = "scale(0.95)";
+      setTimeout(() => el.style.transform = "scale(1)", 150);
+    }
+
+    function toggleAccountDialog() {
+      document.getElementById("accountDialog").classList.toggle("show");
+    }
+
+    function handleTrack(e) {
+      e.preventDefault();
+      const code = document.getElementById("trackCode").value.trim();
+      const btn = document.getElementById("trackBtn");
+
+      if (!code) return showError("يرجى إدخال رقم التتبع.");
+
+      btn.disabled = true;
+      btn.classList.add("loading");
+      btn.innerHTML = `<div class="loading-spinner"></div> جاري البحث`;
+
+      db.ref("trackings/" + code).once("value").then(snapshot => {
+        btn.disabled = false;
+        btn.classList.remove("loading");
+        btn.innerHTML = "تتبع الآن";
+
+        if (!snapshot.exists()) {
+          showError("رقم التتبع غير موجود.");
+          return;
+        }
+
+        const data = snapshot.val();
+        document.getElementById("shipmentTRN").textContent = data.TRN || code;
+        document.getElementById("shipmentStory").textContent = data.story || "غير متوفر";
+        document.getElementById("shipmentDate").textContent = data.date || "غير متوفر";
+        document.getElementById("shipmentLoc").textContent = data.loc || "غير متوفر";
+
+        document.getElementById("shipmentDialog").classList.add("show");
+      }).catch(error => {
+        console.error("خطأ:", error);
+        showError("حدث خطأ أثناء محاولة جلب البيانات.");
+        btn.disabled = false;
+        btn.classList.remove("loading");
+        btn.innerHTML = "تتبع الآن";
+      });
+    }
+  </script>
+</body>
+</html>
